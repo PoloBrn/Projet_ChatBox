@@ -24,7 +24,6 @@ namespace ServerWPF
     {
         private ObservableCollection<User> users = new ObservableCollection<User>();
         private Socket serverSocket;
-        private bool isServerRunning = false;
 
         public MainWindow()
         {
@@ -34,18 +33,11 @@ namespace ServerWPF
 
         private void StartServerButton_Click(object sender, RoutedEventArgs e)
         {
-            if (isServerRunning)
-            {
-                MessageBox.Show("Le serveur est déjà en cours d'exécution.");
-                return;
-            }
-
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.Bind(new IPEndPoint(IPAddress.Any, 1234));
             serverSocket.Listen(10);
 
             MessageBox.Show("Serveur démarré. En attente de connexions...");
-            isServerRunning = true;
             startServerButton.IsEnabled = false;
             stopServerButton.IsEnabled = true;
 
@@ -60,10 +52,7 @@ namespace ServerWPF
             {
                 while (true)
                 {
-                    Socket clientSocket = serverSocket.Accept(); // Accepter la connexion entrante
-                    MessageBox.Show("Client connecté.");
-
-                    // Demander et attribuer un nom d'utilisateur au client
+                    Socket clientSocket = serverSocket.Accept();
                     string username = AskForUsername(clientSocket);
                     if (string.IsNullOrEmpty(username))
                     {
@@ -72,7 +61,6 @@ namespace ServerWPF
                         continue;
                     }
 
-                    // Créer un nouvel utilisateur avec le nom d'utilisateur et l'ajouter à la liste
                     User user = new User(username, clientSocket);
                     AddUserToList(user);
 
@@ -97,7 +85,6 @@ namespace ServerWPF
 
         private void AddUserToList(User user)
         {
-            // Mettre à jour l'interface utilisateur à partir du thread principal
             Dispatcher.Invoke(() =>
             {
                 users.Add(user);
@@ -112,15 +99,12 @@ namespace ServerWPF
                 {
                     byte[] buffer = new byte[255];
                     int size = user.ClientSocket.Receive(buffer);
-                    if (size == 0) // Si size == 0, le client s'est déconnecté
+                    if (size == 0)
                     {
                         break;
                     }
 
                     string message = Encoding.UTF8.GetString(buffer, 0, size);
-                    MessageBox.Show($"{user.Username}: {message}");
-
-                    // Diffuser le message à tous les utilisateurs connectés
                     foreach (User u in users)
                     {
                         u.ClientSocket.Send(Encoding.UTF8.GetBytes($"{user.Username}: {message}"));
@@ -141,7 +125,6 @@ namespace ServerWPF
 
         private void RemoveUserFromList(User user)
         {
-            // Mettre à jour l'interface utilisateur à partir du thread principal
             Dispatcher.Invoke(() =>
             {
                 users.Remove(user);
@@ -150,21 +133,13 @@ namespace ServerWPF
 
         private void StopServerButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!isServerRunning)
-            {
-                MessageBox.Show("Le serveur n'est pas en cours d'exécution.");
-                return;
-            }
-
             if (serverSocket != null)
             {
                 serverSocket.Close();
                 MessageBox.Show("Serveur arrêté.");
+                stopServerButton.IsEnabled = false;
+                startServerButton.IsEnabled = true;
             }
-
-            isServerRunning = false;
-            startServerButton.IsEnabled = true;
-            stopServerButton.IsEnabled = false;
         }
     }
 }
